@@ -85,9 +85,9 @@ Example:
 
 GitHub commands use read-only GET requests. They do not create commits, edit files, modify branches, or delete repository content.
 
-## 5. Optional: save chat history in MySQL via Navicat
+## 5. Optional: save chat history and control the bot from Navicat
 
-The bot can run without MySQL; in that mode history is held only in process memory and is lost when the process restarts.
+The bot can run without MySQL; in that mode history is held only in process memory and is lost when the process restarts. When MySQL is enabled, the bot reads the `ai_enabled` and `model` settings whenever a new text message arrives, so the control query can update them without restarting the process.
 
 **For a new database:**
 1. Start MySQL Server and connect through Navicat Premium.
@@ -100,6 +100,14 @@ The bot can run without MySQL; in that mode history is held only in process memo
 1. Open and execute `telegram-ai-navicat/upgrade_telegram_ai.sql` in Navicat.
 2. This adds the history lookup index only if it is missing and inserts default settings only when absent. It does not delete existing chat records.
 3. Set `MYSQL_ENABLED=1` in the local `.env` and restart the bot.
+
+**Cute Control Panel:** open `telegram-ai-navicat/control_bot.sql` in Navicat. Change the value in `SET @cute_action := 'status';` to exactly one of these choices, then run the entire script:
+- `'status'` — show the current AI status and model (default).
+- `'on'` — enable AI.
+- `'off'` — disable AI.
+- `'model:gpt-4.1-mini'` — select an API model that is available to your OpenAI API account.
+
+For example, change the line to `SET @cute_action := 'off';` and click Run to disable AI; later change it to `'on'` to enable it again. Model changes affect new messages. This requires `MYSQL_ENABLED=1`, a reachable MySQL server, and the updated `bot.py` from the feature branch. A selected model must be available to your API account.
 
 Use a dedicated MySQL user with only the database permissions it needs instead of using `root` for regular operation. Keep the database on localhost or a trusted private network. Do not store API keys or bot tokens in the database.
 
