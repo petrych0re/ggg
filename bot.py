@@ -140,14 +140,17 @@ def _db_update_ai_setting(enabled: bool) -> None:
             )
 
 
-def _db_get_ai_setting() -> str | None:
+def _db_get_control_settings() -> dict[str, str]:
     if not DB_ENABLED:
-        return None
+        return {}
     with _db_connect() as connection:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT setting_value FROM bot_settings WHERE setting_key = 'ai_enabled' LIMIT 1")
-            row = cursor.fetchone()
-    return row[0] if row else None
+            cursor.execute(
+                "SELECT setting_key, setting_value FROM bot_settings "
+                "WHERE setting_key IN ('ai_enabled', 'model')"
+            )
+            rows = cursor.fetchall()
+    return {str(key): str(value) for key, value in rows}
 
 
 async def _db_call(function, *args):
@@ -218,14 +221,33 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
+async def _refresh_control_settings(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Read live control values from MySQL so Navicat changes apply without restarting."""
+    if not DB_ENABLED:
+        return
+    settings = await _db_call(_db_get_control_settings)
+    if not isinstance(settings, dict):
+        return
+    if settings.get("ai_enabled") in {"0", "1"}:
+        context.bot_data["ai_enabled"] = settings["ai_enabled"] == "1"
+    model = settings.get("model", "")
+    # Keep database-driven model names predictable; the actual model must also be
+    # available to the OpenAI API account configured in .env.
+    if model and len(model) <= 100 and all(ch.isalnum() or ch in "._:-" for ch in model):
+        context.bot_data["ai_model"] = model
+
+
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _authorized_or_reply(update):
         return
+    await _refresh_control_settings(context)
     enabled = context.bot_data.setdefault(
         "ai_enabled", os.getenv("AI_ENABLED", "1").lower() not in {"0", "false", "off"}
     )
+    model = context.bot_data.get("ai_model", OPENAI_MODEL)
     await update.effective_message.reply_text(
         "AI: " + ("aktif" if enabled else "nonaktif") + "\n"
+        "Model AI: " + model + "\n"
         "OpenAI API key: " + ("terpasang" if OPENAI_API_KEY else "belum diatur") + "\n"
         "MySQL: " + ("dikonfigurasi" if DB_ENABLED else "nonaktif (memori sementara)") + "\n"
         "GitHub token: " + ("terpasang" if os.getenv("GITHUB_TOKEN", "").strip() else "belum diatur")
@@ -265,7 +287,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.effective_message.reply_text("Riwayat chat milikmu sudah dihapus.")
 
 
-async def _call_openai(history: list[dict[str, str]]) -> str:
+async def _call_openai(history: list[dict[str, str]], model: str | None = None) -> str:
     if not OPENAI_API_KEY:
         raise RuntimeError("OPENAI_API_KEY belum diatur di file .env.")
     headers = {
@@ -273,7 +295,7 @@ async def _call_openai(history: list[dict[str, str]]) -> str:
         "Content-Type": "application/json",
     }
     payload: dict[str, Any] = {
-        "model": OPENAI_MODEL,
+        "model": model or OPENAI_MODEL,
         "instructions": SYSTEM_PROMPT,
         "input": history,
         "max_output_tokens": 900,
@@ -333,6 +355,7 @@ async def chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = update.effective_user
     if not message or not message.text or not user:
         return
+    await _refresh_control_settings(context)
     enabled = context.bot_data.setdefault(
         "ai_enabled", os.getenv("AI_ENABLED", "1").lower() not in {"0", "false", "off"}
     )
@@ -363,7 +386,7 @@ async def chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     try:
         await message.chat.send_action("typing")
-        answer = await _call_openai(history)
+        answer = await _call_openai(history, context.bot_data.get("ai_model", OPENAI_MODEL))
     except RuntimeError as exc:
         await message.reply_text(str(exc))
         return
@@ -383,10 +406,7 @@ async def chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def post_init(application: Application) -> None:
-    if DB_ENABLED:
-        saved_setting = await _db_call(_db_get_ai_setting)
-        if saved_setting in {"0", "1"}:
-            application.bot_data["ai_enabled"] = saved_setting == "1"
+    await _refresh_control_settings(application)
 
     commands = [
         BotCommand("myid", "Lihat Telegram ID untuk konfigurasi"),
