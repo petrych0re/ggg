@@ -33,6 +33,8 @@ SYSTEM_PROMPT = os.getenv(
 MAX_HISTORY = 12
 MAX_TELEGRAM_MESSAGE = 3900
 DB_ENABLED = os.getenv("MYSQL_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _parse_ids(value: str) -> set[int]:
     ids: set[int] = set()
     for token in value.split(","):
@@ -43,9 +45,7 @@ def _parse_ids(value: str) -> set[int]:
 
 
 BOT_ALLOWED_IDS = _parse_ids(os.getenv("BOT_ALLOWED_TELEGRAM_IDS", ""))
-ADMIN_IDS = _parse_ids(os.getenv("ADMIN_ID", "")) | _parse_ids(
-    os.getenv("GITHUB_ALLOWED_TELEGRAM_IDS", "")
-)
+ADMIN_IDS = _parse_ids(os.getenv("ADMIN_ID", ""))
 
 
 def is_authorized(update: Update) -> bool:
@@ -138,6 +138,16 @@ def _db_update_ai_setting(enabled: bool) -> None:
                 "ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)",
                 ("1" if enabled else "0",),
             )
+
+
+def _db_get_ai_setting() -> str | None:
+    if not DB_ENABLED:
+        return None
+    with _db_connect() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT setting_value FROM bot_settings WHERE setting_key = 'ai_enabled' LIMIT 1")
+            row = cursor.fetchone()
+    return row[0] if row else None
 
 
 async def _db_call(function, *args):
@@ -373,6 +383,11 @@ async def chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def post_init(application: Application) -> None:
+    if DB_ENABLED:
+        saved_setting = await _db_call(_db_get_ai_setting)
+        if saved_setting in {"0", "1"}:
+            application.bot_data["ai_enabled"] = saved_setting == "1"
+
     commands = [
         BotCommand("myid", "Lihat Telegram ID untuk konfigurasi"),
         BotCommand("start", "Mulai bot"),
