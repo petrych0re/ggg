@@ -1,15 +1,32 @@
-PANDUAN IMPORT SQL DI NAVICAT PREMIUM
+PANDUAN QUERY NAVICAT PREMIUM — TELEGRAM AI + GITHUB BOT
 
-1. Buka Navicat Premium dan sambungkan koneksi MySQL kamu.
-2. Buka New Query.
-3. Buka file setup_telegram_ai.sql, atau salin seluruh isinya ke editor query.
-4. Pastikan query memakai koneksi MySQL yang benar.
-5. Jalankan seluruh SQL dengan Ctrl+A di editor, lalu klik Run.
-6. Jika berhasil, database telegram_ai akan dibuat dengan tabel users, chat_history, dan bot_settings.
-7. Periksa database telegram_ai di panel kiri Navicat. Jika belum terlihat, refresh koneksi.
+PILIH FILE SESUAI KONDISI DATABASE
 
-Catatan:
-- File ini hanya untuk membuat database dan tabel.
-- Bot Python tetap disimpan di folder proyek kamu, misalnya di Desktop.
-- Jangan memasukkan token Telegram atau API key ke GitHub.
-- Jika MySQL meminta password, gunakan password MySQL milikmu sendiri.
+A. INSTALASI BARU
+Gunakan telegram-ai-navicat/setup_telegram_ai.sql jika database telegram_ai belum ada.
+1. Buka Navicat Premium lalu sambungkan koneksi MySQL.
+2. Pilih koneksi yang benar, lalu buka New Query.
+3. Buka/copy isi file setup_telegram_ai.sql ke editor query.
+4. Jalankan seluruh query.
+5. Refresh panel database dan pastikan database telegram_ai serta tabel users, chat_history, bot_settings muncul.
+6. Lihat hasil SHOW TABLES dan daftar bot_settings di bagian bawah hasil query.
+
+B. DATABASE telegram_ai SUDAH ADA
+Gunakan telegram-ai-navicat/upgrade_telegram_ai.sql untuk menambahkan index riwayat chat yang dibutuhkan/berguna bagi bot baru dan memastikan pengaturan awal tersedia.
+1. Jangan hapus database atau tabel lama.
+2. Buka New Query dan pastikan query dijalankan pada koneksi MySQL yang benar.
+3. Buka/copy isi upgrade_telegram_ai.sql.
+4. Jalankan seluruh query. Skrip ini tidak menghapus riwayat chat.
+5. Jika selesai, periksa hasil SELECT dan SHOW INDEX.
+
+SETELAH QUERY SELESAI
+- Di file .env lokal proyek Python, atur MYSQL_ENABLED=1.
+- Isi MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, dan MYSQL_DATABASE=telegram_ai.
+- Restart bot Python agar konfigurasi terbaca.
+- Untuk pemakaian rutin, lebih aman memakai akun MySQL khusus dengan hak akses terbatas daripada akun root.
+
+PENTING
+- setup_telegram_ai.sql untuk instalasi baru; upgrade_telegram_ai.sql untuk database lama yang sudah memiliki tabel dari setup sebelumnya.
+- Jangan menjalankan DROP DATABASE atau DROP TABLE: itu dapat menghapus data.
+- Jangan simpan token Telegram, OpenAI, atau GitHub di tabel database ini, source code, atau GitHub.
+- Jika MySQL meminta password, gunakan password MySQL milik sendiri.
