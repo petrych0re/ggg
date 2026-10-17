@@ -50,7 +50,11 @@ ADMIN_IDS = _parse_ids(os.getenv("ADMIN_ID", "")) | _parse_ids(
 
 def is_authorized(update: Update) -> bool:
     user = update.effective_user
-    return bool(user and (not BOT_ALLOWED_IDS or user.id in BOT_ALLOWED_IDS))
+    if not user:
+        return False
+    # Fail closed: when no allowlist is configured, only configured admins are allowed.
+    allowed = BOT_ALLOWED_IDS if BOT_ALLOWED_IDS else ADMIN_IDS
+    return user.id in allowed
 
 
 def is_admin(update: Update) -> bool:
@@ -156,6 +160,14 @@ async def _authorized_or_reply(update: Update) -> bool:
     return False
 
 
+async def myid_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # This command intentionally works before allowlist setup so an owner can configure
+    # BOT_ALLOWED_TELEGRAM_IDS. It reveals only the caller's own numeric Telegram ID.
+    user = update.effective_user
+    if user and update.effective_message:
+        await update.effective_message.reply_text(f"Telegram ID kamu: {user.id}")
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _authorized_or_reply(update):
         return
@@ -179,6 +191,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     await update.effective_message.reply_text(
         "PERINTAH BOT\n"
+        "/myid — lihat Telegram ID untuk konfigurasi allowlist\n"
         "/start — mulai bot\n"
         "/help — tampilkan bantuan\n"
         "/status — status AI dan database\n"
@@ -351,16 +364,17 @@ async def chat_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await _db_call(_db_save_message, user.id, "assistant", answer)
     local_history = context.user_data.setdefault("history", [])
-    if not DB_ENABLED:
+    if DB_ENABLED and history:
+        context.user_data["history"] = (history + [{"role": "assistant", "content": answer}])[-MAX_HISTORY:]
+    else:
         local_history.append({"role": "assistant", "content": answer})
         context.user_data["history"] = local_history[-MAX_HISTORY:]
-    else:
-        context.user_data["history"] = (history + [{"role": "assistant", "content": answer}])[-MAX_HISTORY:]
     await _send_long_message(update, answer)
 
 
 async def post_init(application: Application) -> None:
     commands = [
+        BotCommand("myid", "Lihat Telegram ID untuk konfigurasi"),
         BotCommand("start", "Mulai bot"),
         BotCommand("help", "Bantuan perintah"),
         BotCommand("status", "Status AI, MySQL, dan GitHub"),
@@ -389,6 +403,7 @@ def main() -> None:
 
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     application.bot_data["ai_enabled"] = os.getenv("AI_ENABLED", "1").lower() not in {"0", "false", "off"}
+    application.add_handler(CommandHandler("myid", myid_command))
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status_command))
