@@ -33,12 +33,6 @@ SYSTEM_PROMPT = os.getenv(
 MAX_HISTORY = 12
 MAX_TELEGRAM_MESSAGE = 3900
 DB_ENABLED = os.getenv("MYSQL_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
-BOT_ALLOWED_IDS = _parse_ids(os.getenv("BOT_ALLOWED_TELEGRAM_IDS", ""))
-ADMIN_IDS = _parse_ids(os.getenv("ADMIN_ID", "")) | _parse_ids(
-    os.getenv("GITHUB_ALLOWED_TELEGRAM_IDS", "")
-)
-
-
 def _parse_ids(value: str) -> set[int]:
     ids: set[int] = set()
     for token in value.split(","):
@@ -46,6 +40,12 @@ def _parse_ids(value: str) -> set[int]:
         if token.isdigit() and int(token) > 0:
             ids.add(int(token))
     return ids
+
+
+BOT_ALLOWED_IDS = _parse_ids(os.getenv("BOT_ALLOWED_TELEGRAM_IDS", ""))
+ADMIN_IDS = _parse_ids(os.getenv("ADMIN_ID", "")) | _parse_ids(
+    os.getenv("GITHUB_ALLOWED_TELEGRAM_IDS", "")
+)
 
 
 def is_authorized(update: Update) -> bool:
