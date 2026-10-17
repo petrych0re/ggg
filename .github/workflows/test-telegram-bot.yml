@@ -1,0 +1,37 @@
+name: Test Telegram AI Bot
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "bot.py"
+      - "github_integration.py"
+      - "requirements-bot.txt"
+      - ".github/workflows/test-telegram-bot.yml"
+  push:
+    branches: [main, "feature/telegram-github-integration"]
+    paths:
+      - "bot.py"
+      - "github_integration.py"
+      - "requirements-bot.txt"
+      - ".github/workflows/test-telegram-bot.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  import-and-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install bot dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements-bot.txt
+      - name: Compile Python files
+        run: python -m compileall -q bot.py github_integration.py
+      - name: Import bot modules without credentials
+        run: python -c "import bot, github_integration; print('Telegram AI bot modules imported successfully')"
