@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import shutil
 import threading
 import queue
 import tkinter as tk
@@ -98,7 +99,12 @@ class ControlApp:
                 if not line or line.startswith("#") or "=" not in line: continue
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip().strip('"').strip("'")
-            self.proc = subprocess.Popen([sys.executable, str(bot)], cwd=str(bot.parent), env=env,
+            python_cmd = shutil.which("python") or shutil.which("py")
+            if not python_cmd:
+                messagebox.showerror("Python belum terpasang", "Install Python untuk menjalankan bot.py, lalu install requirements bot.")
+                return
+            command = [python_cmd, str(bot)]
+            self.proc = subprocess.Popen(command, cwd=str(bot.parent), env=env,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
             self.status.set("Running")
