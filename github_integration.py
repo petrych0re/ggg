@@ -13,8 +13,11 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
+from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+
+load_dotenv()  # Read local .env without overriding variables already set by the process.
 
 _API_ROOT = "https://api.github.com"
 _API_VERSION = "2022-11-28"
