@@ -89,15 +89,19 @@ GitHub commands use read-only GET requests. They do not create commits, edit fil
 
 The bot can run without MySQL; in that mode history is held only in process memory and is lost when the process restarts.
 
-To persist users and chat history:
-
+**For a new database:**
 1. Start MySQL Server and connect through Navicat Premium.
 2. Open and execute `telegram-ai-navicat/setup_telegram_ai.sql`.
 3. Confirm that database `telegram_ai` and tables `users`, `chat_history`, and `bot_settings` were created.
 4. Fill in `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_DATABASE` in local `.env`.
 5. Set `MYSQL_ENABLED=1` and restart the bot.
 
-Use a dedicated MySQL user with only the database permissions it needs instead of using `root` for regular operation. Keep the database on localhost or a trusted private network.
+**For a database that already exists from the older SQL script:**
+1. Open and execute `telegram-ai-navicat/upgrade_telegram_ai.sql` in Navicat.
+2. This adds the history lookup index only if it is missing and inserts default settings only when absent. It does not delete existing chat records.
+3. Set `MYSQL_ENABLED=1` in the local `.env` and restart the bot.
+
+Use a dedicated MySQL user with only the database permissions it needs instead of using `root` for regular operation. Keep the database on localhost or a trusted private network. Do not store API keys or bot tokens in the database.
 
 ## Troubleshooting
 
