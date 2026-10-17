@@ -1,64 +1,111 @@
-# Integrasi GitHub ke bot Telegram
+# Telegram AI + GitHub Bot
 
-Modul `github_integration.py` menambahkan perintah baca-saja untuk GitHub ke aplikasi Telegram yang memakai **python-telegram-bot v20+**. Modul ini membantu admin memeriksa repository, issue terbuka, commit terbaru, dan isi file tanpa harus keluar dari Telegram.
+This repository now includes a runnable Telegram bot entry point (`bot.py`) and a read-only GitHub command module (`github_integration.py`). The bot can answer ordinary text messages using the OpenAI API, and admins can inspect GitHub repositories from Telegram.
 
-> Repo ini belum menyertakan file utama bot Telegram (`bot.py`). Karena itu, modul disediakan terpisah dan harus didaftarkan ke aplikasi bot yang sudah ada.
+## Important: use the feature branch
 
-## 1. Pasang dependensi
-
-Di folder proyek bot, jalankan:
+These changes are currently in the pull request branch `feature/telegram-github-integration`, not in `main` until the PR is merged. To try the code before it is merged:
 
 ```bash
+git clone --branch feature/telegram-github-integration https://github.com/petrych0re/ggg.git
+cd ggg
+```
+
+After the PR is merged, clone the default branch instead.
+
+## 1. Install Python dependencies
+
+Use Python 3.10 or later. In the project folder:
+
+```bash
+python -m venv .venv
+```
+
+On Windows PowerShell, activate the environment:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Then install packages:
+
+```bash
+python -m pip install --upgrade pip
 python -m pip install -r requirements-bot.txt
 ```
 
-Simpan/copy `github_integration.py` di folder yang sama dengan file utama bot.
+## 2. Configure secrets and access
 
-## 2. Atur file .env
+Copy `.env.example` to a local file named `.env`. Replace each placeholder:
 
-Tambahkan variabel berikut ke file `.env` lokal. Jangan commit file `.env` ke GitHub.
+- `TELEGRAM_BOT_TOKEN`: token from BotFather for your Telegram bot.
+- `OPENAI_API_KEY`: your OpenAI API key. **API usage is billed separately from a ChatGPT subscription.** Set an appropriate budget/usage limit on the API account.
+- `GITHUB_TOKEN`: a GitHub fine-grained personal access token limited to the repository or repositories you need. Grant only read access: Metadata, Contents (for `/ghfile`), and Issues (for `/ghissues`). If the token type/account doesn't permit the account-profile endpoint used by `/github`, that command may need a token/endpoint adjustment.
+- `BOT_ALLOWED_TELEGRAM_IDS`: comma-separated numeric Telegram IDs permitted to use the AI bot.
+- `ADMIN_ID`: comma-separated numeric Telegram IDs permitted to use admin commands such as `/ai_on` and `/ai_off`.
+- `GITHUB_ALLOWED_TELEGRAM_IDS`: comma-separated numeric Telegram IDs allowed to run GitHub commands.
 
-```dotenv
-GITHUB_TOKEN=github_pat_ganti_dengan_token_milikmu
-GITHUB_ALLOWED_TELEGRAM_IDS=123456789
+To discover your own numeric Telegram ID, start the bot and send `/myid`. This helper responds only with the ID of the user who sent the command. Stop the bot, place your ID into all three allowlist variables as needed, save `.env`, and restart the bot. Access defaults to restricted if no allowlist is configured.
+
+Never commit `.env` or paste your tokens into a Telegram chat, source code, issue, or screenshot.
+
+## 3. Start the bot
+
+```bash
+python bot.py
 ```
 
-Ganti `123456789` dengan Telegram numeric user ID milik admin yang diizinkan. Untuk beberapa admin, pisahkan dengan koma, misalnya `123456789,987654321`. Jika variabel ini kosong, modul akan memakai `ADMIN_ID` yang sudah digunakan proyek. Nilai `ADMIN_ID=0` tidak memberikan akses kepada siapa pun.
+Keep the process running while you use the bot. To keep it available around the clock, deploy it on a trusted machine or server and store secrets in that environment. The Windows control application elsewhere in this repository is optional and is not required to run `bot.py`.
 
-Buat GitHub fine-grained personal access token dengan akses baca minimum. Untuk repository privat, pilih repository yang dibutuhkan dan berikan izin **Metadata: read-only**, serta izin **Contents: read-only** dan **Issues: read-only** bila ingin membaca file dan issue. Hindari izin write/admin. Jangan kirim token ke chat Telegram, log, atau screenshot.
+## 4. Commands in Telegram
 
-## 3. Sambungkan ke aplikasi bot
-
-Tambahkan import dan pemanggilan fungsi berikut pada file utama bot yang memakai `python-telegram-bot`. Jalankan registrasi sebelum `application.run_polling()`.
-
-```python
-from github_integration import register_github_handlers
-
-# Setelah objek Application dibuat:
-register_github_handlers(application)
-```
-
-Jika bot saat ini memakai framework lain seperti `aiogram` atau `pyTelegramBotAPI`, handler perlu diadaptasi ke framework tersebut; modul ini tidak kompatibel langsung dengan semua framework.
-
-## 4. Perintah Telegram
-
-| Perintah | Fungsi |
+| Command | What it does |
 |---|---|
-| `/github` | Memastikan token terhubung dan menampilkan akun GitHub yang terautentikasi |
-| `/ghrepos [halaman]` | Daftar 10 repository per halaman, diurutkan berdasarkan pembaruan |
-| `/ghrepo owner/repo` | Ringkasan repository, branch utama, stars, forks, dan issue |
-| `/ghissues owner/repo` | Menampilkan issue terbuka (pull request dikecualikan) |
-| `/ghcommits owner/repo` | Menampilkan hingga 8 commit terbaru |
-| `/ghfile owner/repo path/file.py` | Menampilkan preview file teks, maksimal 100 KB dan dipotong untuk Telegram |
+| `/myid` | Shows your own numeric Telegram ID for local allowlist setup |
+| `/start` | Starts the bot and displays a summary |
+| `/help` | Lists commands |
+| `/status` | Shows whether AI, MySQL, and GitHub token settings are configured |
+| `/reset` | Clears your conversation history in MySQL and the in-memory session |
+| `/ai_on` | Enables AI chat; admin only |
+| `/ai_off` | Disables AI chat; admin only |
+| `/github` | Tests GitHub authentication and shows the connected account |
+| `/ghrepos [page]` | Lists repositories visible to the GitHub token |
+| `/ghrepo owner/repo` | Shows repository metadata |
+| `/ghissues owner/repo` | Lists open issues (pull requests are excluded) |
+| `/ghcommits owner/repo` | Lists recent commits |
+| `/ghfile owner/repo path/to/file.py` | Shows a short preview of a text file |
 
-Contoh: `/ghrepo petrych0re/ggg`
+Example:
 
-Semua perintah dibatasi ke ID Telegram admin dan hanya memakai HTTP GET. Modul tidak membuat commit, mengubah branch, menghapus file, atau mengirim perubahan ke GitHub.
+```text
+/ghrepo petrych0re/ggg
+/ghcommits petrych0re/ggg
+/ghfile petrych0re/ggg bot.py
+```
 
-## Catatan keamanan
+GitHub commands use read-only GET requests. They do not create commits, edit files, modify branches, or delete repository content.
 
-- Simpan token hanya di environment atau file `.env` lokal yang tidak di-commit.
-- Batasi daftar repository pada token hanya ke repository yang benar-benar diperlukan.
-- Perintah dibatasi dengan allowlist ID Telegram. Pastikan ID admin benar.
-- Jangan mengekspos bot token atau GitHub token lewat pesan/log.
-- Respons GitHub yang tidak ditemukan dapat berarti repository privat tidak termasuk dalam cakupan token.
+## 5. Optional: save chat history in MySQL via Navicat
+
+The bot can run without MySQL; in that mode history is held only in process memory and is lost when the process restarts.
+
+To persist users and chat history:
+
+1. Start MySQL Server and connect through Navicat Premium.
+2. Open and execute `telegram-ai-navicat/setup_telegram_ai.sql`.
+3. Confirm that database `telegram_ai` and tables `users`, `chat_history`, and `bot_settings` were created.
+4. Fill in `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_USER`, `MYSQL_PASSWORD`, and `MYSQL_DATABASE` in local `.env`.
+5. Set `MYSQL_ENABLED=1` and restart the bot.
+
+Use a dedicated MySQL user with only the database permissions it needs instead of using `root` for regular operation. Keep the database on localhost or a trusted private network.
+
+## Troubleshooting
+
+- **Bot does not start:** make sure `TELEGRAM_BOT_TOKEN` is set and the dependencies installed in the active Python environment.
+- **AI says the key is missing/invalid:** check `OPENAI_API_KEY`, API account access, available usage budget, and `OPENAI_MODEL`.
+- **GitHub responds with 404:** a private repository can appear not found when the token has no access to it.
+- **GitHub responds with 401/403:** check the token, expiry, selected repositories, permissions, and API rate limit.
+- **MySQL errors:** confirm the server is running, the credentials are correct, and the SQL setup was imported before enabling persistence.
+- **Commands are denied:** verify your numeric ID in `BOT_ALLOWED_TELEGRAM_IDS`, `ADMIN_ID`, and `GITHUB_ALLOWED_TELEGRAM_IDS`. Restart after editing `.env`.
+
+The bot has not been live-tested against your Telegram account or API keys; those credentials must be configured locally before end-to-end use.
