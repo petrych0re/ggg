@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS bot_settings (
   PRIMARY KEY (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- The bot reads ai_enabled from this table on startup.
+-- The bot reads ai_enabled and model from this table on startup and before each new chat message.
 -- Secrets (Telegram/OpenAI/GitHub tokens) must stay in the local .env file, not in MySQL.
 INSERT IGNORE INTO bot_settings (setting_key, setting_value)
 VALUES ('ai_enabled', '1'), ('model', 'gpt-4.1-mini');
