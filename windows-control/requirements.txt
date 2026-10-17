@@ -1,0 +1,1 @@
+# Tkinter is included with standard Windows Python\n# PyInstaller is installed by the GitHub Actions workflow\n
