@@ -1,0 +1,15 @@
+PANDUAN IMPORT SQL DI NAVICAT PREMIUM
+
+1. Buka Navicat Premium dan sambungkan koneksi MySQL kamu.
+2. Buka New Query.
+3. Buka file setup_telegram_ai.sql, atau salin seluruh isinya ke editor query.
+4. Pastikan query memakai koneksi MySQL yang benar.
+5. Jalankan seluruh SQL dengan Ctrl+A di editor, lalu klik Run.
+6. Jika berhasil, database telegram_ai akan dibuat dengan tabel users, chat_history, dan bot_settings.
+7. Periksa database telegram_ai di panel kiri Navicat. Jika belum terlihat, refresh koneksi.
+
+Catatan:
+- File ini hanya untuk membuat database dan tabel.
+- Bot Python tetap disimpan di folder proyek kamu, misalnya di Desktop.
+- Jangan memasukkan token Telegram atau API key ke GitHub.
+- Jika MySQL meminta password, gunakan password MySQL milikmu sendiri.
