@@ -9,7 +9,7 @@ on:
       - ".github/workflows/archive-township-source.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   archive-source:
@@ -22,10 +22,21 @@ jobs:
             "https://github.com/Gaolious/analysis-township/archive/refs/heads/develop.zip" \
             --output township-analysis-develop.zip
           test -s township-analysis-develop.zip
-      - name: Upload source archive
+      - name: Upload temporary workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: township-analysis-develop-source
           path: township-analysis-develop.zip
           if-no-files-found: error
           retention-days: 30
+      - name: Publish persistent archive release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view township-source-archive >/dev/null 2>&1; then
+            gh release create township-source-archive \
+              --title "Township Analysis Source Archive" \
+              --notes "Archive of source from https://github.com/Gaolious/analysis-township/tree/develop. Upstream project is licensed under GPL-3.0; retain and follow its license and notices when redistributing."
+          fi
+          gh release upload township-source-archive township-analysis-develop.zip --clobber
