@@ -1,0 +1,31 @@
+name: Archive Township Analysis Source
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+  push:
+    paths:
+      - ".github/workflows/archive-township-source.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  archive-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download upstream source archive
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            "https://github.com/Gaolious/analysis-township/archive/refs/heads/develop.zip" \
+            --output township-analysis-develop.zip
+          test -s township-analysis-develop.zip
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: township-analysis-develop-source
+          path: township-analysis-develop.zip
+          if-no-files-found: error
+          retention-days: 30
